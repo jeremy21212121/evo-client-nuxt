@@ -58,9 +58,9 @@
       </v-btn>
     </v-app-bar>
     <v-main>
-      <v-container>
+      <div class="nopad-container">
         <nuxt />
-      </v-container>
+      </div>
     </v-main>
     <v-navigation-drawer
       v-model="rightDrawer"
@@ -110,8 +110,17 @@ export default {
       miniVariant: false,
       right: true,
       rightDrawer: false,
-      title: 'Vuetify.js'
+      title: 'Evo Finder'
     }
   }
 }
 </script>
+
+<style>
+.nopad-container {
+  padding: 0;
+}
+div.mapboxgl-popup-content {
+  color: rgba(0,0,0,0.8);
+}
+</style>

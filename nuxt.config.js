@@ -3,6 +3,7 @@ import colors from 'vuetify/es5/util/colors'
 require('dotenv').config()
 
 const config = {
+  ssr: false,
   // Global page headers (https://go.nuxtjs.dev/config-head)
   head: {
     titleTemplate: '%s - evo-nuxt',
@@ -17,19 +18,22 @@ const config = {
     ]
   },
   publicRuntimeConfig: {
-    identityBaseUrl: process.env.identityBaseUrl,
-    anonymousClientId: process.env.anonymousClientId,
-    anonymousClientSecret: process.env.anonymousClientSecret,
-    anonymousBaseUrl: process.env.anonymousBaseUrl,
-    anonymousApiKey: process.env.anonymousApiKey,
-    secureClientId: process.env.secureClientId,
-    secureClientSecret: process.env.secureClientSecret,
-    secureBaseUrl: process.env.secureBaseUrl,
-    secureApiKey: process.env.secureApiKey,
-    userAgent: process.env.userAgent
+    identityBaseUrl: process.env.IDENTITY_BASE_URL,
+    anonymousClientId: process.env.ANONYMOUS_CLIENT_ID,
+    anonymousClientSecret: process.env.ANONYMOUS_CLIENT_SECRET,
+    anonymousBaseUrl: process.env.ANONYMOUS_BASE_URL,
+    anonymousApiKey: process.env.ANONYMOUS_API_KEY,
+    secureClientId: process.env.SECURE_CLIENT_ID,
+    secureClientSecret: process.env.SECURE_CLIENT_SECRET,
+    secureBaseUrl: process.env.SECURE_BASE_URL,
+    secureApiKey: process.env.SECURE_API_KEY,
+    userAgent: process.env.USER_AGENT,
+    mapBoxKey: process.env.MAPBOX_KEY,
+    mapTilerKey: process.env.MAPTILER_KEY
   },
   // Global CSS (https://go.nuxtjs.dev/config-css)
   css: [
+    '~/static/mapbox-gl.css'
   ],
 
   // Plugins to run before rendering page (https://go.nuxtjs.dev/config-plugins)
@@ -54,9 +58,13 @@ const config = {
     // https://go.nuxtjs.dev/axios
     '@nuxtjs/axios',
     // https://go.nuxtjs.dev/pwa
-    '@nuxtjs/pwa'
+    '@nuxtjs/pwa',
+    // https://github.com/skyatura/vue-geolocation-api
+    'vue-geolocation-api/nuxt'
   ],
-
+  geolocation: {
+    watch: true
+  },
   // Axios module configuration (https://go.nuxtjs.dev/config-axios)
   axios: {},
 

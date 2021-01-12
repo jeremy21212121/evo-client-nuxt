@@ -1,89 +1,157 @@
 <template>
-  <v-row justify="center" align="center">
-    <v-col cols="12" sm="8" md="6">
-      <div class="text-center">
-        <logo />
-        <vuetify-logo />
-      </div>
-      <v-card>
-        <v-card-title class="headline">
-          Welcome to the Vuetify + Nuxt.js template
-        </v-card-title>
-        <v-card-text>
-          <p>Vuetify is a progressive Material Design component framework for Vue.js. It was designed to empower developers to create amazing applications.</p>
-          <p>
-            For more information on Vuetify, check out the <a
-              href="https://vuetifyjs.com"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              documentation
-            </a>.
-          </p>
-          <p>
-            If you have questions, please join the official <a
-              href="https://chat.vuetifyjs.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="chat"
-            >
-              discord
-            </a>.
-          </p>
-          <p>
-            Find a bug? Report it on the github <a
-              href="https://github.com/vuetifyjs/vuetify/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="contribute"
-            >
-              issue board
-            </a>.
-          </p>
-          <p>Thank you for developing with Vuetify and I look forward to bringing more exciting features in the future.</p>
-          <div class="text-xs-right">
-            <em><small>&mdash; John Leider</small></em>
-          </div>
-          <hr class="my-3">
-          <a
-            href="https://nuxtjs.org/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Nuxt Documentation
-          </a>
-          <br>
-          <a
-            href="https://github.com/nuxt/nuxt.js"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Nuxt GitHub
-          </a>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn
-            color="primary"
-            nuxt
-            to="/inspire"
-          >
-            Continue
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-col>
-  </v-row>
+  <section>
+    <client-only>
+      <MglMap
+        :access-token="$config.mapBoxKey"
+        :map-style="mapConfig.style"
+        :center="mapConfig.center"
+        :zoom="mapConfig.zoom"
+        @load="onMapLoaded"
+      >
+        <MglMarker
+          v-if="locationReady"
+          :coordinates="location"
+        >
+          <UserMarkerIcon slot="marker" />
+          <MglPopup slot="default" v-bind="mapConfig.markers.user.popup">
+            Your location
+          </MglPopup>
+        </MglMarker>
+        <div v-if="vehicleDataReady">
+          <MglMarker
+            v-for="(vehicle, vehicleIndex) in vehicles"
+            :key="`v-marker-${vehicleIndex}`"
+            :coordinates="extractCoords(vehicle)"
+            color="black"
+          />
+        </div>
+      </MglMap>
+    </client-only>
+    <aside>
+      <span v-show="$fetchState.loading">
+        Loading...
+      </span>
+    </aside>
+  </section>
 </template>
 
-<script>
-import Logo from '~/components/Logo.vue'
-import VuetifyLogo from '~/components/VuetifyLogo.vue'
+<script lang="js">
+// Using JS because there are no types for mapbox-gl or vue-mapbox
+import Mapbox from 'mapbox-gl'
+import { MglMap, MglMarker, MglPopup } from 'vue-mapbox'
+import UserMarkerIcon from '~/components/UserMarkerIcon.vue'
 
 export default {
   components: {
-    Logo,
-    VuetifyLogo
+    MglMap,
+    MglMarker,
+    UserMarkerIcon,
+    MglPopup
+  },
+  async fetch () {
+    // Set to defaults if there is a timeout or error
+    const latLonArray = await this.getCoordsAsync(10)
+    // Semicolon line-ending required due to parsing ambiguity
+    this.mapConfig.center = latLonArray.reverse();
+    // assign all the data from the anon API responses
+    [this.models, this.options, this.parking, this.homezones, this.cities, this.vehicles] = await this.$getAllAnonApiData(latLonArray)
+  },
+  fetchOnServer: false,
+  data () {
+    return {
+      mapLoaded: false,
+      mapbox: null,
+      mapConfig: {
+        style: `https://api.maptiler.com/maps/streets/style.json?key=${this.$config.mapTilerKey}`,
+        // mapbox-gl uses [lon,lat] (like GeoJSON) instead of the convential [lat,long]
+        defaultCenter: [-123.1205741140304, 49.283342879699745],
+        center: [-123.1205741140304, 49.283342879699745],
+        zoom: 10,
+        markers: {
+          user: {
+            popup: {
+              onlyText: true,
+              closeButton: false,
+              closeOnClick: true
+            }
+          }
+        }
+      },
+      models: [],
+      options: [],
+      parking: [],
+      homezones: [],
+      cities: [],
+      vehicles: []
+    }
+  },
+  computed: {
+    // @returns {boolean}
+    locationReady () {
+      return !this.$geolocation.loading && this.$geolocation.supported && this.$geolocation.coords !== null
+    },
+    // @returns {[number,number] | null}
+    location () {
+      const coords = this.$geolocation.coords
+      return coords ? [coords.longitude, coords.latitude] : this.mapConfig.defaultCenter
+    },
+    // @returns {[number,number]}
+    center () {
+      return (this.locationReady && this.location) ? this.location : this.mapConfig.defaultCenter
+    },
+    // @returns {boolean}
+    vehicleDataReady () {
+      return !this.$fetchState.pending && !this.$fetchState.error && this.vehicles.length > 0
+    }
+  },
+  created () {
+    this.mapbox = Mapbox
+  },
+  methods: {
+    /**
+     * @param {AvailableVehicle} availableVehicle
+     * @returns {[number,number]} - in [lon,lat] format
+     */
+    extractCoords (availableVehicle) {
+      const { lon, lat } = availableVehicle.location.position
+      return [lon, lat]
+    },
+
+    /**
+     * Waits for location for up to 'sec' seconds, resolves to default location if timeout is exceeded.
+     * @returns {Promise<[number, number]>} - in [lat,lon] format for /avaialableVehicles API call
+     */
+    async getCoordsAsync (sec = 10) {
+      const options = { timeout: sec * 1000, maximumAge: 24 * 3600 * 1000 }
+
+      const position = await this.$geolocation
+        .getCurrentPosition(options)
+        .catch(_e => null)
+
+      // set to default position in [lat,lon] format
+      let output = this.mapConfig.defaultCenter.reverse()
+
+      if (position && position.coords) {
+        output = [position.coords.latitude, position.coords.longitude]
+      }
+      return output
+    },
+    onMapLoaded (_event) {
+      this.mapLoaded = true
+    }
   }
 }
 </script>
+
+<style scoped>
+section {
+  width: 100%;
+  /* min-height: 50vh; */
+  height: calc(100vh - 56px);
+}
+@media screen and (min-width: 950px) {
+  section {
+    height: calc(100vh - 64px);
+  }
+}
+</style>
