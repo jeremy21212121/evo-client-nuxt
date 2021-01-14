@@ -216,12 +216,10 @@ export default {
     onMapLoad (_event) {
       this.mapLoaded = true
       const options = { timeout: 10 * 1000, maximumAge: 24 * 3600 * 1000 }
-      // console.log('Waiting for location...')
       this.setAlert('Waiting for location...')
       this.$geolocation.getCurrentPosition(options)
         .then((pos) => {
           if (pos && pos.coords) {
-            // console.log('Location found.')
             this.setAlert('Location found.', 'success')
             this.$refs.mapElement.map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], essential: true })
             setTimeout(() => {
@@ -230,7 +228,6 @@ export default {
           }
         })
         .catch((e) => {
-          // console.log('Error getting location.')
           this.setError('Error getting location.')
           this.syncMapBounds()
           this.mapState.error = e
@@ -257,12 +254,10 @@ export default {
       }
     },
     onMapMoveEnd (_event) {
-      // console.log('move end')
       const debounce = Date.now() - this.mapState.lastMove
       // debounce time chosen by trial-and-error. If we updated bounds in the last 150ms, we should be good.
       // The 'inBounds' function extends the bounds to provide a margin for error.
       if (debounce > 150) {
-        // console.log('debounce: ' + debounce)
         // Update the bounds only if they haven't been updated in the last 150 ms.
         // This exists to ensure that all the correct markers have been added.
         // The "moveend" event only fires when the map is manually moved by the user. Calls to map.flyTo() do not trigger it.
