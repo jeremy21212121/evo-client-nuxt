@@ -1,6 +1,6 @@
 <template>
-  <section>
-    <client-only>
+  <div>
+    <section>
       <MglMap
         ref="mapElement"
         :access-token="$config.mapBoxKey"
@@ -10,32 +10,50 @@
         @load="onMapLoad"
         @move="onMapMove"
         @moveend="onMapMoveEnd"
+        @styleimagemissing="onStyleImageMissing"
       >
-        <MglMarker
-          v-if="locationReady"
-          :coordinates="location"
-        >
+        <!-- user location marker -->
+        <MglMarker v-if="locationReady" :coordinates="location">
           <UserMarkerIcon slot="marker" />
           <MglPopup slot="default" v-bind="mapConfig.markers.user.popup">
             Your location
           </MglPopup>
         </MglMarker>
+        <!-- vehicle markers -->
         <div v-if="vehicleDataReady">
           <MglMarker
             v-for="(vehicle, vehicleIndex) in filteredVehicles"
             :key="`v-marker-${vehicleIndex}`"
             :coordinates="extractCoords(vehicle)"
-            color="black"
+            :color="mapConfig.markers.vehicle.color"
+            @click="() => mapState.activeVehicle = vehicle"
           />
         </div>
       </MglMap>
-    </client-only>
+    </section>
+    <v-fab-transition>
+      <v-btn
+        v-show="locationReady && !mapState.activeVehicle"
+        color="#00BCE2"
+        elevation="10"
+        fab
+        fixed
+        bottom
+        right
+        ripple
+        @click="flyToUserLocation"
+      >
+        <v-icon>mdi-crosshairs-gps</v-icon>
+      </v-btn>
+    </v-fab-transition>
+    <!-- Separate alert and error snackbars. This prevents an info alert replacing a serious error. -->
     <aside>
-      <span v-show="$fetchState.loading">
-        Loading...
-      </span>
+      <UserAlert v-bind="alert" @dismiss="clearAlert" />
     </aside>
-  </section>
+    <aside>
+      <UserAlert v-bind="error" @dismiss="clearError" />
+    </aside>
+  </div>
 </template>
 
 <script lang="js">
@@ -43,6 +61,7 @@
 import Mapbox from 'mapbox-gl'
 import { MglMap, MglMarker, MglPopup } from 'vue-mapbox'
 import UserMarkerIcon from '~/components/UserMarkerIcon.vue'
+import UserAlert from '~/components/UserAlert.vue'
 
 // Temporarily load cached anon api data during dev to decrease load time
 import Models from '~/assets/models.json'
@@ -58,41 +77,75 @@ export default {
     MglMap,
     MglMarker,
     UserMarkerIcon,
-    MglPopup
+    MglPopup,
+    UserAlert
   },
   async fetch () {
-    // Temporarily disable API calls to reduce load time in dev
-
     // Set to defaults if there is a timeout or error
-    // const latLonArray = await this.getCoordsAsync(10)
+    const latLonArray = await this.getCoordsAsync(10)
+    // noop
+    latLonArray[0] += 0
+    // let the user know that stuff is happening
+    this.$nextTick(() => {
+      this.setAlert('Loading vehicle data...')
+    })
     // assign all the data from the anon API responses
     // [this.models, this.options, this.parking, this.homezones, this.cities, this.vehicles] = await this.$getAllAnonApiData(latLonArray)
+    // it can take ~4 seconds from this point until the markers near the user are rendered
+    // lets give them something to look at
   },
   fetchOnServer: false,
   data () {
     return {
+      alert: {
+        active: false,
+        alertType: 'info',
+        message: ''
+      },
+      error: {
+        active: false,
+        alertType: 'error',
+        message: ''
+      },
       mapLoaded: false,
       mapbox: null,
       mapState: {
         bounds: null,
-        lastMove: 0
+        lastMove: 0,
+        error: null,
+        activeVehicle: null
       },
       mapConfig: {
         style: `https://api.maptiler.com/maps/streets/style.json?key=${this.$config.mapTilerKey}`,
         // mapbox-gl uses [lon,lat] (like GeoJSON) instead of the convential [lat,long]
-        defaultCenter: [-123.1205741140304, 49.283342879699745],
-        center: [-123.1205741140304, 49.283342879699745],
+        defaultCenter: [-123.0680493304739, 49.25776294746344],
+        // Object format, used as prop for MglMap with .sync modifier
+        center: {
+          lat: 49.25776294746344,
+          lng: -123.0680493304739
+        },
+        // start with a close zoom. This avoids having to immediately render 1-2k markers.
         zoom: 16,
         markers: {
+          vehicle: {
+            color: 'rgba(0, 0, 0, 0.82)'
+          },
           user: {
             popup: {
               onlyText: true,
               closeButton: false,
-              closeOnClick: true
+              closeOnClick: true,
+              offset: 12
             }
           }
         }
       },
+      // models: [],
+      // options: [],
+      // parking: [],
+      // homezones: [],
+      // cities: [],
+      // vehicles: [],
       models: Models,
       options: Options,
       parking: Parking,
@@ -162,26 +215,66 @@ export default {
     },
     onMapLoad (_event) {
       this.mapLoaded = true
-      this.mapState.bounds = this.$refs.mapElement.map.getBounds()
-      this.$nextTick(() => {
-        this.$refs.mapElement.map.flyTo({ center: this.location, essential: true })
-      })
+      const options = { timeout: 10 * 1000, maximumAge: 24 * 3600 * 1000 }
+      // console.log('Waiting for location...')
+      this.setAlert('Waiting for location...')
+      this.$geolocation.getCurrentPosition(options)
+        .then((pos) => {
+          if (pos && pos.coords) {
+            // console.log('Location found.')
+            this.setAlert('Location found.', 'success')
+            this.$refs.mapElement.map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], essential: true })
+            setTimeout(() => {
+              this.setAlert('Adding vehicles to map...')
+            }, 800)
+          }
+        })
+        .catch((e) => {
+          // console.log('Error getting location.')
+          this.setError('Error getting location.')
+          this.syncMapBounds()
+          this.mapState.error = e
+        })
     },
-    onMapMove (_event) {
-      // const debounce = Date.now() - this.mapState.lastMove
-      // console.log(_event.map._moving)
-      if (!_event.map._moving) {
-        // console.log(_event)
-        this.mapState.bounds = this.$refs.mapElement.map.getBounds()
-        this.mapState.lastMove = Date.now()
+    syncMapBounds () {
+      // Sync visible bounds from map obj to a reactive vue data prop
+      // Updating the bounds causes the filteredVehicles computed prop to recalculate which markers should be drawn
+      this.mapState.bounds = this.$refs.mapElement.map.getBounds()
+      // Set lastMove time for debouncing purposes.
+      // We don't want to have to recalculate the visible vehicles more than necessary.
+      this.mapState.lastMove = Date.now()
+    },
+    onMapMove (event) {
+      // We don't want to recalculate the visible markers until the map has stopped moving.
+      // This event fires A LOT so we don't want to be wasting cycles recalculating what is visible until moving is done.
+      if (!event.map._moving) {
+        // We can't count on receiving this event with map.moving === false at the end of a move
+        // We might get just this, we might get 'moveend', we might get both. For this reason we need to
+        // set the bounds in both, but with debouncing in the latter to ensure we aren't doing it too often.
+
+        // Updating the bounds causes the filteredVehicles computed prop to run
+        this.syncMapBounds()
       }
     },
     onMapMoveEnd (_event) {
+      // console.log('move end')
       const debounce = Date.now() - this.mapState.lastMove
-      if (debounce > 70) {
-        this.mapState.bounds = this.$refs.mapElement.map.getBounds()
-        this.mapState.lastMove = Date.now()
+      // debounce time chosen by trial-and-error. If we updated bounds in the last 150ms, we should be good.
+      // The 'inBounds' function extends the bounds to provide a margin for error.
+      if (debounce > 150) {
+        // console.log('debounce: ' + debounce)
+        // Update the bounds only if they haven't been updated in the last 150 ms.
+        // This exists to ensure that all the correct markers have been added.
+        // The "moveend" event only fires when the map is manually moved by the user. Calls to map.flyTo() do not trigger it.
+        this.syncMapBounds()
       }
+    },
+    onStyleImageMissing (event) {
+      // Exists solely to prevent console warnings about missing map images like "swimming_pool_11"
+      // this event handler seems to have been added in a later version of mapbox-gl-js. I'll leave it for now.
+      // Do nothing, I don't care about billiards icons etc but it's junking up my console.
+      event.preventDefault()
+      event.stopPropagation()
     },
     /**
      * @param {AvailableVehicle} vehicle
@@ -191,11 +284,49 @@ export default {
      * @returns {boolean}
      */
     inBounds (vehicle, bounds) {
+      // get the data into the format we need for performing the comparison
       const lonLat = [vehicle.location.position.lon, vehicle.location.position.lat]
-      const ne = [bounds._ne.lng, bounds._ne.lat]
-      const sw = [bounds._sw.lng, bounds._sw.lat]
-      // LT or == North/East Bounds  &&  GT or == South/West bounds
+      // slightly increase the size of the bounds to make sure we capture markers that are on the edge
+      const ne = [bounds._ne.lng, bounds._ne.lat].map(n => n + 0.001)
+      // for the SW coords we must decrease them slightly to increase the bounds area
+      const sw = [bounds._sw.lng, bounds._sw.lat].map(n => n - 0.001)
+      // vehicle position is LT or == North/East Bounds  &&  GT or == South/West bounds
       return lonLat.every((n, i) => n <= ne[i]) && lonLat.every((n, i) => n >= sw[i])
+    },
+    clearAlert () {
+      this.alert.active = false
+      // this.alert.alertType = 'info'
+      this.alert.message = ''
+    },
+    setAlert (message, type = 'info') {
+      this.clearAlert()
+      // wait a tick in case there is an exisiting alert
+      // it won't trigger if we don't wait a tick
+      this.$nextTick(() => {
+        this.alert.message = message
+        this.alert.alertType = type
+        this.alert.active = true
+      })
+    },
+    clearError () {
+      this.error.active = false
+      this.error.message = ''
+    },
+    setError (message, type = 'error') {
+      this.clearError()
+      // wait a tick in case there is an exisiting alert
+      // it won't trigger if we don't wait a tick
+      this.$nextTick(() => {
+        this.error.message = message
+        this.error.alertType = type
+        this.error.active = true
+      })
+    },
+    flyToUserLocation () {
+      this.$refs.mapElement.map.flyTo({ center: this.location, essential: true, zoom: 16 })
+      setTimeout(() => {
+        this.setAlert('Adding vehicles to map...')
+      }, 800)
     }
   }
 }

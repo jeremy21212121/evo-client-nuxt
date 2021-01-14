@@ -6,12 +6,12 @@ const config = {
   ssr: false,
   // Global page headers (https://go.nuxtjs.dev/config-head)
   head: {
-    titleTemplate: '%s - evo-nuxt',
-    title: 'evo-nuxt',
+    titleTemplate: '%s - Evo Finder',
+    title: 'Find A Car',
     meta: [
       { charset: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { hid: 'description', name: 'description', content: '' }
+      { hid: 'description', name: 'description', content: 'Find available Evo Car Share vehicles near you' }
     ],
     link: [
       { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
@@ -50,7 +50,8 @@ const config = {
     '@nuxt/typescript-build',
     // https://go.nuxtjs.dev/vuetify
     '@nuxtjs/vuetify',
-    '@nuxtjs/dotenv'
+    '@nuxtjs/dotenv',
+    '@nuxtjs/svg'
   ],
 
   // Modules (https://go.nuxtjs.dev/config-modules)
