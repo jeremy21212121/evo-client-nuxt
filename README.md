@@ -12,17 +12,19 @@ They took away my web interface, which I relied on. Being unable and unwilling t
 
 ## Status
 
-The anonymous API client is fully functional and typed in TypeScript. The authenticated API (allows booking, unlocking) still needs to be reverse engineered.
+The anonymous API client is fully functional and typed in TypeScript. The authenticated API (allows booking, unlocking) still needs to be implemented.
 
-I just finished implementing the client (`/plugins/AnonApi/`) in TS and writing a Nuxt plugin (`/plugins/anonApiData.ts`).
+The basic API client is found in the plugins directory (`/plugins/AnonApi/`) and the Nuxt plugin is in `/plugins/anonApiData.ts`.
 
-The entire user interface still needs to be implemented. I am making use of some `Vuetify` components and `VueMapbox` for the map interface. `VueMapbox` handles the GeoJSON format returned by both the parking and homezones endpoints.
+The MVP is now about 75% complete. I am making use of some `Vuetify` components and `VueMapbox` for the map interface. `VueMapbox` handles the GeoJSON format returned by both the parking and homezones endpoints.
 
 ## Future plans
 
-The next priority is to implement the basic UI, allowing the user to list available vehicles and view them on the map.
+The next priority is to finish implementing the basic UI, allowing the user to list available vehicles and view them on the map. It is now functional but needs the "car details" component to be made.
 
-After that, I will fire the android emulator back up and reverse-engineer the authenticated API for operations like booking and unlocking a vehicle.
+After that, I will implement the authenticated API for operations like booking and unlocking a vehicle. I took a preliminary capture and I have it largely documented.
+
+At some point I will need to write some tests for both the TypeScript API client and the UI. I want to have a fully-functional MVP before I worry about that.
 
 
 ## Build Setup
