@@ -5,7 +5,7 @@
         ref="mapElement"
         :access-token="$config.mapBoxKey"
         :map-style="mapConfig.style"
-        :center.sync="mapConfig.center"
+        :center="mapConfig.center"
         :zoom="mapConfig.zoom"
         @load="onMapLoad"
         @move="onMapMove"
@@ -34,6 +34,7 @@
     <v-fab-transition>
       <v-btn
         v-show="locationReady && !mapState.activeVehicle"
+        :class="'adjust-position'"
         color="#00BCE2"
         elevation="10"
         fab
@@ -46,6 +47,13 @@
         <v-icon>mdi-crosshairs-gps</v-icon>
       </v-btn>
     </v-fab-transition>
+    <aside v-if="mapState.activeVehicle !== null">
+      <VehicleDetails
+        :vehicle="mapState.activeVehicle"
+        :user-location="userLocation"
+        @close="mapState.activeVehicle = null"
+      />
+    </aside>
     <!-- Separate alert and error snackbars. This prevents an info alert replacing a serious error. -->
     <aside>
       <UserAlert v-bind="alert" @dismiss="clearAlert" />
@@ -62,6 +70,7 @@ import Mapbox from 'mapbox-gl'
 import { MglMap, MglMarker, MglPopup } from 'vue-mapbox'
 import UserMarkerIcon from '~/components/UserMarkerIcon.vue'
 import UserAlert from '~/components/UserAlert.vue'
+import VehicleDetails from '~/components/VehicleDetails.vue'
 
 // Temporarily load cached anon api data during dev to decrease load time
 import Models from '~/assets/models.json'
@@ -78,7 +87,8 @@ export default {
     MglMarker,
     UserMarkerIcon,
     MglPopup,
-    UserAlert
+    UserAlert,
+    VehicleDetails
   },
   async fetch () {
     // Set to defaults if there is a timeout or error
@@ -159,24 +169,30 @@ export default {
     locationReady () {
       return !this.$geolocation.loading && this.$geolocation.supported && this.$geolocation.coords !== null
     },
-    // @returns {[number,number] | null}
+    // @returns {[number,number]}
     location () {
+      // used for centering the map and the UserMarker
       const coords = this.$geolocation.coords
       return coords ? [coords.longitude, coords.latitude] : this.mapConfig.defaultCenter
     },
-    // @returns {[number,number]}
-    center () {
-      return (this.locationReady && this.location) ? this.location : this.mapConfig.defaultCenter
+    // @returns {Array}
+    userLocation () {
+      // slightly different semantics than location(). Used for calculating vehicle distance in VehicleDetails component.
+      return this.locationReady ? this.location : []
     },
+    // // @returns {[number,number]}
+    // center () {
+    //   return (this.locationReady && this.location) ? this.location : this.mapConfig.defaultCenter
+    // },
     // @returns {boolean}
     vehicleDataReady () {
       return !this.$fetchState.pending && !this.$fetchState.error && this.vehicles.length > 0
     },
     filteredVehicles () {
       // filter vehicles not currently visible to avoid having to render 1500-2000 markers at once
-      const output = []
+      let output = []
       if (this.mapState.bounds !== null) {
-        output.push(...this.vehicles.filter(car => this.inBounds(car, this.mapState.bounds)))
+        output = this.vehicles.filter(car => this.inBounds(car, this.mapState.bounds))
       }
       return output
     }
@@ -268,6 +284,7 @@ export default {
       // Exists solely to prevent console warnings about missing map images like "swimming_pool_11"
       // this event handler seems to have been added in a later version of mapbox-gl-js. I'll leave it for now.
       // Do nothing, I don't care about billiards icons etc but it's junking up my console.
+      // https://github.com/mapbox/mapbox-gl-js/pull/8684
       event.preventDefault()
       event.stopPropagation()
     },
@@ -331,6 +348,10 @@ export default {
 section {
   width: 100%;
   height: calc(100vh - 56px);
+}
+button.adjust-position {
+  bottom: 24px;
+  right: 24px;
 }
 @media screen and (min-width: 950px) {
   section {

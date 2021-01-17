@@ -1,7 +1,7 @@
 <template>
   <v-row>
     <v-col class="d-flex justify-center align-center">
-      <v-card elevation="2" max-width="550px" :class="$vuetify.breakpoint.sm ? 'mt-4' : $vuetify.breakpoint.width > 1200 ? 'mt-10' : ''">
+      <v-card elevation="2" :max-width="($vuetify.breakpoint.width > 599) ?'550px' : '100%'" :class="$vuetify.breakpoint.sm ? 'mt-4' : $vuetify.breakpoint.width > 1200 ? 'mt-10' : ''">
         <v-img :src="heroSrc" />
         <v-card-title>
           About Evo Finder
