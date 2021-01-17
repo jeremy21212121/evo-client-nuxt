@@ -2,7 +2,9 @@
 
 > Made with Nuxt & TypeScript
 
-Features a reverse-engineered vulog v5 API client written in TypeScript, based on [this earlier effort](https://github.com/jeremy21212121/evo-re) first prototyped in Bash, then JavaScript.
+**Early alpha-quality release available now at** [evofinder.ca](https://evofinder.ca)
+
+Features a RE'd vulog v5 API client written in TypeScript, based on [this earlier effort](https://github.com/jeremy21212121/evo-re) first prototyped in Bash, then JavaScript.
 
 The API client and Nuxt plugin live in the `/plugins` directory.
 
@@ -12,19 +14,19 @@ They took away my web interface, which I relied on. Being unable and unwilling t
 
 ## Status
 
+There is an early alpha-quality MVP now available at [evofinder.ca](https://evofinder.ca). It has some bugs on larger devices, but works well on mobile. Users can see available vehicles near them on a map, and get some details about the vehicle. More to come!
+
 The anonymous API client is fully functional and typed in TypeScript. The authenticated API (allows booking, unlocking) still needs to be implemented.
 
 The basic API client is found in the plugins directory (`/plugins/AnonApi/`) and the Nuxt plugin is in `/plugins/anonApiData.ts`.
 
-The MVP is now about 75% complete. I am making use of some `Vuetify` components and `VueMapbox` for the map interface. `VueMapbox` handles the GeoJSON format returned by both the parking and homezones endpoints.
-
 ## Future plans
 
-The next priority is to finish implementing the basic UI, allowing the user to list available vehicles and view them on the map. It is now functional but needs the "car details" component to be made.
+Lots of refinements and new features to come. Stay tuned!
 
-After that, I will implement the authenticated API for operations like booking and unlocking a vehicle. I took a preliminary capture and I have it largely documented.
+At some point I will need to write some tests for both the TypeScript API client and the UI. I want to have a fully-functional MVP before I worry too much about that.
 
-At some point I will need to write some tests for both the TypeScript API client and the UI. I want to have a fully-functional MVP before I worry about that.
+The API client should live in its own repo and get added to npm for ease of use. We shall see when I get around to that.
 
 
 ## Build Setup
@@ -43,5 +45,3 @@ $ npm run start
 # generate static project
 $ npm run generate
 ```
-
-For detailed explanation on how things work, check out [Nuxt.js docs](https://nuxtjs.org).
