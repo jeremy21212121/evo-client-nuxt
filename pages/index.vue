@@ -73,12 +73,12 @@ import UserAlert from '~/components/UserAlert.vue'
 import VehicleDetails from '~/components/VehicleDetails.vue'
 
 // Temporarily load cached anon api data during dev to decrease load time
-import Models from '~/assets/models.json'
-import Options from '~/assets/options.json'
-import Parking from '~/assets/parking.json'
-import Homezones from '~/assets/homezones.json'
-import Cities from '~/assets/cities.json'
-import Vehicles from '~/assets/vehicles.json'
+// import Models from '~/assets/models.json'
+// import Options from '~/assets/options.json'
+// import Parking from '~/assets/parking.json'
+// import Homezones from '~/assets/homezones.json'
+// import Cities from '~/assets/cities.json'
+// import Vehicles from '~/assets/vehicles.json'
 
 export default {
   name: 'MainMap',
@@ -93,16 +93,15 @@ export default {
   async fetch () {
     // Set to defaults if there is a timeout or error
     const latLonArray = await this.getCoordsAsync(10)
-    // noop
-    latLonArray[0] += 0
+
     // let the user know that stuff is happening
     this.$nextTick(() => {
       this.setAlert('Loading vehicle data...')
-    })
+    });
     // assign all the data from the anon API responses
-    // [this.models, this.options, this.parking, this.homezones, this.cities, this.vehicles] = await this.$getAllAnonApiData(latLonArray)
+    [this.models, this.options, this.parking, this.homezones, this.cities, this.vehicles] = await this.$getAllAnonApiData(latLonArray)
     // it can take ~4 seconds from this point until the markers near the user are rendered
-    // lets give them something to look at
+    // The map onLoad handler will display a 4s 'Adding vehicles to map...' info notification
   },
   fetchOnServer: false,
   data () {
@@ -129,7 +128,7 @@ export default {
         style: `https://api.maptiler.com/maps/streets/style.json?key=${this.$config.mapTilerKey}`,
         // mapbox-gl uses [lon,lat] (like GeoJSON) instead of the convential [lat,long]
         defaultCenter: [-123.0680493304739, 49.25776294746344],
-        // Object format, used as prop for MglMap with .sync modifier
+        // Object format, used as prop for MglMap component
         center: {
           lat: 49.25776294746344,
           lng: -123.0680493304739
@@ -150,18 +149,19 @@ export default {
           }
         }
       },
-      // models: [],
-      // options: [],
-      // parking: [],
-      // homezones: [],
-      // cities: [],
-      // vehicles: [],
-      models: Models,
-      options: Options,
-      parking: Parking,
-      homezones: Homezones,
-      cities: Cities,
-      vehicles: Vehicles
+      models: [],
+      options: [],
+      parking: [],
+      homezones: [],
+      cities: [],
+      vehicles: []
+      // uncomment for using cached results in dev
+      // models: Models,
+      // options: Options,
+      // parking: Parking,
+      // homezones: Homezones,
+      // cities: Cities,
+      // vehicles: Vehicles
     }
   },
   computed: {
