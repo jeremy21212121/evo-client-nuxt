@@ -11,7 +11,7 @@ const config = {
     meta: [
       { charset: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, minimal-ui' },
-      { hid: 'description', name: 'description', content: 'Find available Evo Car Share vehicles near you' }
+      { hid: 'description', name: 'description', content: 'Quickly list available Evo cars on a map— From the comfort of your web browser!' }
     ],
     link: [
       { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
