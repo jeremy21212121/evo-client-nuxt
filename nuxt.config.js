@@ -29,7 +29,10 @@ const config = {
       ogDescription: 'Find available Evo Car Share vehicles near you',
       ogHost: 'https://evofinder.ca',
       ogImage: '/ef-social-1200x630.jpg',
-      nativeUI: true
+      nativeUI: true,
+      twitterCard: 'summary_large_image',
+      twitterSite: '@JeremyPoole21',
+      twitterCreator: '@JeremyPoole21'
     },
     manifest: {
       name: 'Evo Finder',
