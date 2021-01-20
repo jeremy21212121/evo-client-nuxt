@@ -156,6 +156,8 @@ div.v-snack.modified {
     justify-content: center;
     margin: 0;
     height: 140px;
+    // simple fix for being too wide on desktop/laptop screens
+    max-width: 330px;
     border-top-left-radius: 3px;
     border-top-right-radius: 3px;
     background: linear-gradient(90deg, rgba(0,172,226,1) 0%, rgba(0,188,226,1) 100%);
