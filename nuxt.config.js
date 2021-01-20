@@ -10,12 +10,32 @@ const config = {
     title: 'Find A Car',
     meta: [
       { charset: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, minimal-ui' },
       { hid: 'description', name: 'description', content: 'Find available Evo Car Share vehicles near you' }
     ],
     link: [
       { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
     ]
+  },
+  pwa: {
+    meta: {
+      name: 'Evo Finder',
+      mobileAppIOS: true,
+      author: 'Jeremy P',
+      description: 'Find available Evo Car Share vehicles near you',
+      theme_color: '#323232',
+      ogSiteName: 'Evo Finder',
+      ogTitle: 'Evo Finder',
+      ogDescription: 'Find available Evo Car Share vehicles near you',
+      ogHost: 'https://evofinder.ca',
+      ogImage: '/ef-social-1200x630.jpg',
+      nativeUI: true
+    },
+    manifest: {
+      name: 'Evo Finder',
+      short_name: 'Evo Finder',
+      background_color: '#323232'
+    }
   },
   publicRuntimeConfig: {
     identityBaseUrl: process.env.IDENTITY_BASE_URL,

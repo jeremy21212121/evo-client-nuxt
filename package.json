@@ -1,5 +1,6 @@
 {
   "name": "evo-nuxt",
+  "description": "Find available Evo Car Share vehicles near you",
   "version": "1.0.0",
   "private": true,
   "scripts": {
