@@ -2,11 +2,11 @@
 
 > Made with Nuxt & TypeScript
 
-**Early alpha-quality release available now at** [evofinder.ca](https://evofinder.ca)
+**Available now at** [evofinder.ca](https://evofinder.ca)
 
 Features a RE'd vulog v5 API client written in TypeScript, based on [this earlier effort](https://github.com/jeremy21212121/evo-re) first prototyped in Bash, then JavaScript.
 
-The API client and Nuxt plugin live in the `/plugins` directory.
+The API client lives in the `/plugins/AnonApi` directory.
 
 ## Why?
 
@@ -14,11 +14,9 @@ They took away my web interface, which I relied on. Being unable and unwilling t
 
 ## Status
 
-There is an early alpha-quality MVP now available at [evofinder.ca](https://evofinder.ca). It has some bugs on larger devices, but works well on mobile. Users can see available vehicles near them on a map, and get some details about the vehicle. More to come!
+There is an early MVP now available at [evofinder.ca](https://evofinder.ca). It is a [progressive web app](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps) and works great on mobile through desktop. Users can see available vehicles near them on a map, and get some details about the vehicle. More to come!
 
-The anonymous API client is fully functional and typed in TypeScript. The authenticated API (allows booking, unlocking) still needs to be implemented.
-
-The basic API client is found in the plugins directory (`/plugins/AnonApi/`) and the Nuxt plugin is in `/plugins/anonApiData.ts`.
+The anonymous API client is fully functional and typed in TypeScript. The authenticated API (allows booking, unlocking) may never be implemented for security reasons.
 
 ## Future plans
 
