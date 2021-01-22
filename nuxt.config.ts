@@ -1,8 +1,8 @@
-// import { NuxtConfig } from '@nuxt/types'
+import { NuxtConfig } from '@nuxt/types'
 import colors from 'vuetify/es5/util/colors'
 require('dotenv').config()
 
-const config = {
+const config: NuxtConfig = {
   ssr: false,
   // Global page headers (https://go.nuxtjs.dev/config-head)
   head: {
@@ -56,12 +56,13 @@ const config = {
   },
   // Global CSS (https://go.nuxtjs.dev/config-css)
   css: [
-    '~/static/mapbox-gl.css'
+    // vendor mapbox styles to avoid third-party request
+    '~/assets/vendor/mapbox-gl.css'
   ],
 
   // Plugins to run before rendering page (https://go.nuxtjs.dev/config-plugins)
   plugins: [
-    '~/plugins/anonApiData.ts'
+    // '~/plugins/anonApiData.ts'
   ],
 
   // Auto import components (https://go.nuxtjs.dev/config-components)

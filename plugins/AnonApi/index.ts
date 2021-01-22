@@ -1,33 +1,46 @@
 import axios, { AxiosRequestConfig, AxiosInstance } from 'axios'
 import { FeatureCollection } from 'geojson'
 
-// Comes from the decompiled android app.
-const config = {
-  identityBaseUrl:
-    'https://java-us01.vulog.com/auth/realms/BCAA-CAYVR/protocol/openid-connect/token',
-  anonymousClientId: 'BCAA-CAYVR_anon',
-  anonymousClientSecret: 'dbe490f4-2f4a-4bef-8c0b-52c0ecedb6c8',
-  anonymousBaseUrl: 'https://java-us01.vulog.com/apiv5',
-  anonymousApiKey: 'f52e5e56-c7db-4af0-acf5-0d8b13ac4bfc',
-  secureClientId: 'BCAA-CAYVR_secure',
-  secureClientSecret: 'b3728c6b-43a2-46f1-90c9-e85a31e2c09c',
-  secureBaseUrl: 'https://java-us01.vulog.com/apiv5',
-  secureApiKey: '8bb6d3fd-5cf5-4b72-90f5-01c81a4b89dd',
-  userAgent: 'okhttp/3.12.8'
-}
+// const config: Config = {
+//   identityBaseUrl:
+//     'https://java-us01.vulog.com/auth/realms/BCAA-CAYVR/protocol/openid-connect/token',
+//   anonymousClientId: 'BCAA-CAYVR_anon',
+//   anonymousClientSecret: 'dbe490f4-2f4a-4bef-8c0b-52c0ecedb6c8',
+//   anonymousBaseUrl: 'https://java-us01.vulog.com/apiv5',
+//   anonymousApiKey: 'f52e5e56-c7db-4af0-acf5-0d8b13ac4bfc',
+//   secureClientId: 'BCAA-CAYVR_secure',
+//   secureClientSecret: 'b3728c6b-43a2-46f1-90c9-e85a31e2c09c',
+//   secureBaseUrl: 'https://java-us01.vulog.com/apiv5',
+//   secureApiKey: '8bb6d3fd-5cf5-4b72-90f5-01c81a4b89dd',
+//   userAgent: 'okhttp/3.12.8'
+// }
 
 // This data is sent form-encoded when requesting a token
-const tokenData: Array<[string, string]> = [
-  ['scope', ''],
-  ['client_id', config.anonymousClientId],
-  ['client_secret', config.anonymousClientSecret],
-  ['grant_type', 'client_credentials']
-]
+// const tokenData: Array<[string, string]> = [
+//   ['scope', ''],
+//   ['client_id', config.anonymousClientId],
+//   ['client_secret', config.anonymousClientSecret],
+//   ['grant_type', 'client_credentials']
+// ]
 
 export namespace AnonApi {
   /******************************
    * Types
    *****************************/
+
+  // Used in the Token class implementation, such an object must be passed to the constructor
+  export interface Config {
+    identityBaseUrl: string;
+    anonymousClientId: string;
+    anonymousClientSecret: string;
+    anonymousBaseUrl: string;
+    anonymousApiKey: string;
+    secureClientId: string;
+    secureClientSecret: string;
+    secureBaseUrl: string;
+    secureApiKey: string;
+    userAgent: string;
+  }
 
   export class TokenResponse {
     accessToken: string;
@@ -195,12 +208,19 @@ export namespace AnonApi {
     * For some reason the refresh endpoint isn't used so we just request new tokens as needed.
     */
    class Token {
-    protected tokenData: Array<[string, string]> = tokenData
+    // static data that is POST-ed with form encoding
+    protected tokenData: Array<[string, string]>
     protected tokenType: string = ''
     protected accessToken: string = ''
     protected tokenExpiry: number = 0
+    private config: Config
 
-    // needs to be called by extending class to manually get new token
+    constructor (config: Config) {
+      this.config = config
+      this.tokenData = [['scope', ''], ['client_id', config.anonymousClientId], ['client_secret', config.anonymousClientSecret], ['grant_type', 'client_credentials']]
+    }
+
+    // needs to be called by extending class to manually get new token. This is needed to work around some obfuscation.
     protected fetchNewToken = async (): Promise<void> => {
       const params = new URLSearchParams()
       // build form-encoded data
@@ -210,10 +230,10 @@ export namespace AnonApi {
         headers: {
           // the headers come from the mitmproxy traffic capture
           'content-type': 'application/x-www-form-urlencoded',
-          'user-agent': config.userAgent
+          'user-agent': this.config.userAgent
         },
         data: params,
-        url: config.identityBaseUrl
+        url: this.config.identityBaseUrl
       }
       // make API request
       const response = await axios(options)
@@ -243,8 +263,8 @@ export namespace AnonApi {
   class Request extends Token {
     protected axiosInstance: AxiosInstance
 
-    constructor () {
-      super()
+    constructor (config: Config) {
+      super(config)
       // Auth header will be added at call time. Headers are chosen to match android app.
       this.axiosInstance = axios.create({
         baseURL: config.anonymousBaseUrl,
@@ -277,11 +297,12 @@ export namespace AnonApi {
 
   /*
   * Used to get all data from the anon API
-  * Makes use of the Request class
+  * Extends the AnonApi.Request class
   * I've been reading too much Java/Kotlin code and now everything is a class :P
+  * NB - Must be instantiated with a AnonApi.Config object, as can be found in the AnonApi.Request class constructor
   */
   export class Data extends Request {
-    // lat/lon defaults to downtown vancouver
+    // lat/lon defaults to downtown vancouver if none is passed
     public getAll = async (
       lat = 49.279844999999995,
       lon = -123.10200666666667

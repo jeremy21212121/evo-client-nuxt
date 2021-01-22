@@ -68,17 +68,10 @@
 // Using JS because there are no types for mapbox-gl or vue-mapbox
 import Mapbox from 'mapbox-gl'
 import { MglMap, MglMarker, MglPopup } from 'vue-mapbox'
+import { mapState, mapActions } from 'vuex'
 import UserMarkerIcon from '~/components/UserMarkerIcon.vue'
 import UserAlert from '~/components/UserAlert.vue'
 import VehicleDetails from '~/components/VehicleDetails.vue'
-
-// Temporarily load cached anon api data during dev to decrease load time
-// import Models from '~/assets/models.json'
-// import Options from '~/assets/options.json'
-// import Parking from '~/assets/parking.json'
-// import Homezones from '~/assets/homezones.json'
-// import Cities from '~/assets/cities.json'
-// import Vehicles from '~/assets/vehicles.json'
 
 export default {
   name: 'MainMap',
@@ -97,9 +90,11 @@ export default {
     // let the user know that stuff is happening
     this.$nextTick(() => {
       this.setAlert('Loading vehicle data...')
-    });
-    // assign all the data from the anon API responses
-    [this.models, this.options, this.parking, this.homezones, this.cities, this.vehicles] = await this.$getAllAnonApiData(latLonArray)
+    })
+    // clone $config
+    const apiConfig = Object.assign({}, this.$config)
+    // Assign all the data from the anon API responses via vuex action
+    await this.initStore({ config: apiConfig, position: latLonArray })
     // it can take ~4 seconds from this point until the markers near the user are rendered
     // The map onLoad handler will display a 4s 'Adding vehicles to map...' info notification
   },
@@ -148,23 +143,11 @@ export default {
             }
           }
         }
-      },
-      models: [],
-      options: [],
-      parking: [],
-      homezones: [],
-      cities: [],
-      vehicles: []
-      // uncomment for using cached results in dev
-      // models: Models,
-      // options: Options,
-      // parking: Parking,
-      // homezones: Homezones,
-      // cities: Cities,
-      // vehicles: Vehicles
+      }
     }
   },
   computed: {
+    ...mapState(['models', 'options', 'parking', 'homezones', 'cities', 'vehicles']),
     // @returns {boolean}
     locationReady () {
       return !this.$geolocation.loading && this.$geolocation.supported && this.$geolocation.coords !== null
@@ -180,10 +163,6 @@ export default {
       // slightly different semantics than location(). Used for calculating vehicle distance in VehicleDetails component.
       return this.locationReady ? this.location : []
     },
-    // // @returns {[number,number]}
-    // center () {
-    //   return (this.locationReady && this.location) ? this.location : this.mapConfig.defaultCenter
-    // },
     // @returns {boolean}
     vehicleDataReady () {
       return !this.$fetchState.pending && !this.$fetchState.error && this.vehicles.length > 0
@@ -201,6 +180,7 @@ export default {
     this.mapbox = Mapbox
   },
   methods: {
+    ...mapActions(['initStore', 'updateAnonApiData']),
     /**
      * @param {AvailableVehicle} availableVehicle
      * @returns {[number,number]} - in [lon,lat] format

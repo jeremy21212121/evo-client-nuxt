@@ -1,3 +1,8 @@
+/**
+ * No longer functional or necessary.
+ * NB: AnonApi.Data constructor now takes a config object
+ *
+
 import { Plugin } from '@nuxt/types'
 import { AnonApi } from './AnonApi/index'
 
@@ -37,3 +42,5 @@ const myPlugin: Plugin = (_context, inject) => {
 }
 
 export default myPlugin
+
+*/
