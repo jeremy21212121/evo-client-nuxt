@@ -14,14 +14,14 @@
             {{ plate }}
           </v-subheader>
           <!-- distance from user -->
-          <v-list-item v-if="hasUserLocation" light>
+          <v-list-item v-if="vehicle.distance" light>
             <v-list-item-icon>
               <v-icon medium color="rgba(0,0,0,0.9)">
                 {{ icons.distance }}
               </v-icon>
             </v-list-item-icon>
             <v-list-item-content>
-              <v-list-item-title>{{ distanceString() }}</v-list-item-title>
+              <v-list-item-title>{{ distanceString(vehicle.distance) }}</v-list-item-title>
             </v-list-item-content>
           </v-list-item>
           <!-- fuel level -->
@@ -85,16 +85,12 @@ export default {
         app: true,
         timeout: -1,
         value: true,
-        // absolute: true,
         centered: true,
         bottom: true,
         color: '#00BCE2',
-        // minHeight: 300,
         maxWidth: 500,
         width: '100%',
         elevation: 14
-        // rounded: '6px'
-        // tile: true
       }
     }
   },
@@ -108,36 +104,16 @@ export default {
     fuel () {
       return this.vehicle.status.energyLevel
     },
-    position () {
-      return this.vehicle.location.position
-    },
     hasUserLocation () {
       return Array.isArray(this.userLocation) && this.userLocation.length === 2
-    },
-    distance () {
-      let distance = 0
-      if (this.hasUserLocation) {
-        const [userLon, userLat] = this.userLocation
-        distance = this.geoDistance(userLat, userLon, this.position.lat, this.position.lon)
-      }
-      return distance
     }
   },
   methods: {
-    geoDistance: (lat1, lon1, lat2, lon2) => {
-      // Returns distance, in meters, between two sets of co-ordinates
-      const toRadians = deg => deg * Math.PI / 180
-      const latRad1 = toRadians(lat1)
-      const latRad2 = toRadians(lat2)
-      const lonDiffRad = toRadians(lon2 - lon1)
-      const R = 6371e3
-      return Math.round(Math.acos(Math.sin(latRad1) * Math.sin(latRad2) + Math.cos(latRad1) * Math.cos(latRad2) * Math.cos(lonDiffRad)) * R)
-    },
-    distanceString () {
-      let output = `${this.distance} m`
+    distanceString (distance) {
+      let output = `${distance} m`
       if (this.distance > 999) {
         // Kilometers to 2 decimal places. Example: 1.23
-        const km = Math.round(this.distance / 10) / 100
+        const km = Math.round(distance / 10) / 100
         output = `${km} km`
       }
       return output

@@ -1,34 +1,25 @@
+/**
+ * Class that enables easy use of the anonymous portion of a certain white-label car share platforms API. Works in the browser and with Node.js.
+ * Every type that has a non-obvious purpose should be documented with a comment. There are a variety of relative IDs that refer to a non-obvious data type.
+ *
+ * The API uses certain unusual approaches which are either terrible mistakes or some sort of very weak obfuscation. Examples include:
+ * - Abusing the OpenID-Connect protocol (Not using the refresh token, requesting new tokens repeatedly and long before their stated expiration time)
+ * - Calling certain API endpoints multiple times
+ * The implementation of the above can be found in the only public method: AnonApi.Data.getAll
+ *
+ * Right now the types and implementation all live in this same file. This should ideally live in its own repo, be made into a module,
+ * and be published to NPM to make it easy to use anywhere.
+ */
+
 import axios, { AxiosRequestConfig, AxiosInstance } from 'axios'
 import { FeatureCollection } from 'geojson'
-
-// const config: Config = {
-//   identityBaseUrl:
-//     'https://java-us01.vulog.com/auth/realms/BCAA-CAYVR/protocol/openid-connect/token',
-//   anonymousClientId: 'BCAA-CAYVR_anon',
-//   anonymousClientSecret: 'dbe490f4-2f4a-4bef-8c0b-52c0ecedb6c8',
-//   anonymousBaseUrl: 'https://java-us01.vulog.com/apiv5',
-//   anonymousApiKey: 'f52e5e56-c7db-4af0-acf5-0d8b13ac4bfc',
-//   secureClientId: 'BCAA-CAYVR_secure',
-//   secureClientSecret: 'b3728c6b-43a2-46f1-90c9-e85a31e2c09c',
-//   secureBaseUrl: 'https://java-us01.vulog.com/apiv5',
-//   secureApiKey: '8bb6d3fd-5cf5-4b72-90f5-01c81a4b89dd',
-//   userAgent: 'okhttp/3.12.8'
-// }
-
-// This data is sent form-encoded when requesting a token
-// const tokenData: Array<[string, string]> = [
-//   ['scope', ''],
-//   ['client_id', config.anonymousClientId],
-//   ['client_secret', config.anonymousClientSecret],
-//   ['grant_type', 'client_credentials']
-// ]
 
 export namespace AnonApi {
   /******************************
    * Types
    *****************************/
 
-  // Used in the Token class implementation, such an object must be passed to the constructor
+  // Used in the Token class implementation. Such an object must be passed to the constructor. You will need to provide these values yourself.
   export interface Config {
     identityBaseUrl: string;
     anonymousClientId: string;
@@ -48,7 +39,7 @@ export namespace AnonApi {
     refreshExpiresIn: number;
     refreshToken: string;
     tokenType: string;
-    // Simply camel-cases the prop names to satisfy eslint
+    // Simply camel-cases the prop names to satisfy eslint and convention
     constructor (obj: any) {
       this.accessToken = obj.access_token
       this.expiresIn = obj.expires_in
@@ -164,6 +155,8 @@ export namespace AnonApi {
     description: Description;
     location: Location;
     status: Status;
+    // We use this to store the distance from the user
+    distance?: number;
   }
 
   export interface Description {
@@ -203,12 +196,13 @@ export namespace AnonApi {
    ****************/
 
     /*
-    * Class has one main method, get() (async)
+    * Class has one main protected method, `async getToken()`
     * It keeps track of the expiration and will get a new token automatically (Doesn't currently matter as the expiry time seems to be a lie).
-    * For some reason the refresh endpoint isn't used so we just request new tokens as needed.
+    * For some reason the refresh endpoint isn't used so we just request new tokens as needed. A new token can be manually requested as needed
+    * with the protected method `async fetchNewToken()`.
     */
    class Token {
-    // static data that is POST-ed with form encoding
+    // Static data that is POST-ed with form encoding
     protected tokenData: Array<[string, string]>
     protected tokenType: string = ''
     protected accessToken: string = ''
@@ -220,28 +214,32 @@ export namespace AnonApi {
       this.tokenData = [['scope', ''], ['client_id', config.anonymousClientId], ['client_secret', config.anonymousClientSecret], ['grant_type', 'client_credentials']]
     }
 
-    // needs to be called by extending class to manually get new token. This is needed to work around some obfuscation.
+    // Needs to be called by extending class to manually get new token. This is needed to work around some weirdness in the API.
     protected fetchNewToken = async (): Promise<void> => {
       const params = new URLSearchParams()
-      // build form-encoded data
+      // Build form-encoded data to be used as POST body
       this.tokenData.forEach(kvArr => params.append(...kvArr))
       const options: AxiosRequestConfig = {
         method: 'POST',
         headers: {
-          // the headers come from the mitmproxy traffic capture
+          // The headers come from a `mitmproxy` traffic capture
           'content-type': 'application/x-www-form-urlencoded',
+          // Some browsers, including Chrome, will refuse to set the 'user-agent' header. This results in an error in the console, but it does not cause the request to fail.
+          // Other browsers, like Firefox, and server-side environments like Node.js will allow you to set this header without complaining.
+          // It doesn't seem to be terribly important, the requests will still succeed regardless. I could write some logic to conditionally add the header but that is a bit hacky.
+          // For now I will just leave it, mapbox already makes a mess of the console.
           'user-agent': this.config.userAgent
         },
         data: params,
         url: this.config.identityBaseUrl
       }
-      // make API request
+      // Make the API request
       const response = await axios(options)
-      // parse token from API response to ensure it has all expected properties
+      // Parse token from API response to ensure it has all expected properties and to convert them from snake_case to camelCase.
       const anonToken = new AnonApi.TokenResponse(response.data)
       this.tokenType = anonToken.tokenType
       this.accessToken = anonToken.accessToken
-      // set token expiry time 50ms before actual to provide a buffer
+      // Set token expiry time 50ms before actual to provide a buffer
       this.tokenExpiry = anonToken.expiresIn * 1000 + Date.now() - 50
     }
 
@@ -249,16 +247,16 @@ export namespace AnonApi {
 
     protected getToken = async (): Promise<string> => {
       if (!this.isTokenValid()) {
-        // no valid token so fetch one first
+        // No valid token, so fetch one first
         await this.fetchNewToken()
       }
-      // returns token string in the format required for the Authorization header value
+      // Returns token string in the format required for the Authorization header value
       return `${this.tokenType} ${this.accessToken}`
     }
    }
 
   /*
-  * Makes use of the Token class to make authorized calls to anonymous (not logged in) API endpoints
+  * Makes use of the Token class to make authorized calls to the anonymous (not logged in) API endpoints
   */
   class Request extends Token {
     protected axiosInstance: AxiosInstance
@@ -274,15 +272,15 @@ export namespace AnonApi {
           accept: 'application/json',
           'content-type': 'application/json'
         },
-        // Modified JSON parsing to handle non-standard JSON intended to cause errors
+        // Modified JSON parsing to handle non-standard JSON intended to cause errors.
         // We are no longer seeing this but we will keep it for now as it doesn't effect valid JSON.
         transformResponse: res => JSON.parse(res.replace(/^\[\](?=\[)/, ''))
       })
     }
 
-    // method for making API requests
+    // Method for making API requests
     protected getPath = async (path: string, headers = {}): Promise<Response> => {
-      // gets a valid token string
+      // Gets a valid token string
       const tokenString = await this.getToken()
       // Auth header needs to be added at function run time to ensure it is valid
       const mergedHeaders = Object.assign(
@@ -302,14 +300,14 @@ export namespace AnonApi {
   * NB - Must be instantiated with a AnonApi.Config object, as can be found in the AnonApi.Request class constructor
   */
   export class Data extends Request {
-    // lat/lon defaults to downtown vancouver if none is passed
+    // lat/lon defaults to downtown Vancouver if none is provided
     public getAll = async (
       lat = 49.279844999999995,
       lon = -123.10200666666667
     ): Promise<[VehicleModels, Options, ParkingAreas, Homezones, Cities, AvailableVehicles]> => {
       /*
         * Manually request a token twice.
-        * For some bizarre reason we have to request two tokens before making any API calls. I guess it is an attempt at security via obscurity.
+        * For some bizarre reason we have to request two tokens before making any API calls. I guess it is an attempt at obscurity.
         */
       await this.fetchNewToken()
       await this.fetchNewToken()
@@ -318,7 +316,7 @@ export namespace AnonApi {
       *
         The vehicle names are used to fetch images such as https://mobile-asset-resources.vulog.center/PROD_US/BCAA-CAYVR/mobile_resources/models/Prius/android/xxhdpi/model.png?f620633d-7098-49ba-88e0-e54f8ef72a18
         The query string from the end of the image url comes the "tokenIconsUrl" prop in this response. Interestingly, only 1/3 succeeded ("Prius"), but this may be because we are not currently logged in.
-        It is not necessary, for our purposes, to request the images. They are hosted on a different server and do not currently make up part of the obfuscation process.
+        It is not necessary, for our purposes, to request the images. They are hosted on a different server and do not currently make up part of the bizarre obfuscation process.
       */
       const models = await this.getPath('/models')
       /*
@@ -340,8 +338,7 @@ export namespace AnonApi {
         */
       const cities = await this.getPath('/cities')
 
-      // Manually request a new token because that is what the real app does. Probably an attempt at security through obscurity.
-      await this.fetchNewToken()
+      // Manually request a new token because that is what the real app does.
       /*
         * User lat/lon are included as headers. Defaults to downtown vancouver.
         */

@@ -52,7 +52,8 @@ const config: NuxtConfig = {
     secureApiKey: process.env.SECURE_API_KEY,
     userAgent: process.env.USER_AGENT,
     mapBoxKey: process.env.MAPBOX_KEY,
-    mapTilerKey: process.env.MAPTILER_KEY
+    mapTilerKey: process.env.MAPTILER_KEY,
+    appVersion: '1.0.1'
   },
   // Global CSS (https://go.nuxtjs.dev/config-css)
   css: [

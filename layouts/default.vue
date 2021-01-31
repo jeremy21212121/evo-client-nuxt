@@ -7,6 +7,9 @@
       fixed
       app
     >
+      <v-subheader>
+        {{ `v${$config.appVersion}` }}
+      </v-subheader>
       <v-list>
         <v-list-item
           v-for="(item, i) in items"
@@ -51,14 +54,34 @@
       temporary
       fixed
     >
-      <v-list>
-        <v-list-item ripple>
-          <v-list-item-icon>
-            <v-icon>
-              mdi-map-marker-question-outline
+      <v-subheader>
+        Nearby Vehicles
+      </v-subheader>
+      <v-list v-if="nearestVehicles.length > 0">
+        <v-list-item
+          v-for="(car, carIndex) in nearestVehicles"
+          :key="`nearby-${carIndex}`"
+          :class="'modified'"
+          ripple
+          dense
+        >
+          <v-list-item-title>{{ car.description.plate }}</v-list-item-title>
+          <v-list-item-icon v-if="car.distance">
+            <v-icon dense>
+              {{ icons.distance }}
             </v-icon>
           </v-list-item-icon>
-          <v-list-item-title>Coming soon...</v-list-item-title>
+          <v-list-item-subtitle v-if="car.distance" title="Distance">
+            {{ distanceString(car.distance) }}
+          </v-list-item-subtitle>
+          <v-list-item-icon>
+            <v-icon>
+              mdi-gas-station
+            </v-icon>
+          </v-list-item-icon>
+          <v-list-item-subtitle title="Fuel level">
+            {{ `${car.status.energyLevel} %` }}
+          </v-list-item-subtitle>
         </v-list-item>
       </v-list>
     </v-navigation-drawer>
@@ -66,8 +89,10 @@
 </template>
 
 <script>
-import { mdiCarConnected } from '@mdi/js'
+import { mapGetters, mapState, mapActions } from 'vuex'
+import { mdiCarConnected, mdiMapMarkerDistance } from '@mdi/js'
 import EvoFinderSvg from '~/static/evofinder.svg?inline'
+
 export default {
   name: 'DefaultLayout',
   components: {
@@ -75,6 +100,9 @@ export default {
   },
   data () {
     return {
+      icons: {
+        distance: mdiMapMarkerDistance
+      },
       clipped: false,
       drawer: false,
       fixed: false,
@@ -95,6 +123,29 @@ export default {
       rightDrawer: false,
       title: 'Evo Finder'
     }
+  },
+  computed: {
+    ...mapState(['position']),
+    ...mapGetters(['nearestVehicles'])
+  },
+  watch: {
+    '$geolocation.coords' (obj) {
+      if ((obj.latitude !== this.position.lat) || (obj.longitude !== this.position.lon)) {
+        this.setPosition({ lat: obj.latitude, lon: obj.longitude })
+      }
+    }
+  },
+  methods: {
+    ...mapActions(['setPosition']),
+    distanceString (distance) {
+      let output = `${distance} m`
+      if (distance > 999) {
+        // Kilometers to 2 decimal places. Example: 1.23
+        const km = Math.round(distance / 10) / 100
+        output = `${km} km`
+      }
+      return output
+    }
   }
 }
 </script>
@@ -114,5 +165,22 @@ div.v-application--wrap {
   min-height: 100vh;
   max-height: 100vh;
   overflow: hidden;
+}
+div.v-list-item.modified {
+  flex-wrap: wrap;
+  margin: 4px 0px;
+}
+div.v-list-item.modified div.v-list-item__icon {
+  max-width: 20%;
+  margin-right: 2%;
+}
+div.v-list-item.modified div.v-list-item__subtitle {
+  max-width: 25%;
+  margin-right: 2%;
+}
+@media screen and (min-width: 700px) {
+  div.v-list-item.modified {
+    margin: 8px 0px;
+  }
 }
 </style>

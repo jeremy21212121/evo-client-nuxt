@@ -25,9 +25,11 @@
             v-for="(vehicle, vehicleIndex) in filteredVehicles"
             :key="`v-marker-${vehicleIndex}`"
             :coordinates="extractCoords(vehicle)"
-            :color="mapConfig.markers.vehicle.color"
+            :anchor="mapConfig.markers.vehicle.anchor"
             @click="() => mapState.activeVehicle = vehicle"
-          />
+          >
+            <VehicleMarker slot="marker" :active="vehicle === mapState.activeVehicle" />
+          </MglMarker>
         </div>
       </MglMap>
     </section>
@@ -54,12 +56,12 @@
         @close="mapState.activeVehicle = null"
       />
     </aside>
-    <!-- Separate alert and error snackbars. This prevents an info alert replacing a serious error. -->
+    <!-- Separate alert and error snackbars. This prevents an info alert replacing a serious error. [BUG] But it doesn't stop them overlapping. Fix me. -->
     <aside>
       <UserAlert v-bind="alert" @dismiss="clearAlert" />
     </aside>
     <aside>
-      <UserAlert v-bind="error" @dismiss="clearError" />
+      <UserAlert v-bind="error" :class="alert.active ? 'mt-3' : ''" @dismiss="clearError" />
     </aside>
   </div>
 </template>
@@ -72,6 +74,7 @@ import { mapState, mapActions } from 'vuex'
 import UserMarkerIcon from '~/components/UserMarkerIcon.vue'
 import UserAlert from '~/components/UserAlert.vue'
 import VehicleDetails from '~/components/VehicleDetails.vue'
+import VehicleMarker from '~/components/VehicleMarker.vue'
 
 export default {
   name: 'MainMap',
@@ -81,7 +84,8 @@ export default {
     UserMarkerIcon,
     MglPopup,
     UserAlert,
-    VehicleDetails
+    VehicleDetails,
+    VehicleMarker
   },
   async fetch () {
     // Set to defaults if there is a timeout or error
@@ -132,7 +136,9 @@ export default {
         zoom: 16,
         markers: {
           vehicle: {
-            color: 'rgba(0, 0, 0, 0.82)'
+            color: '#292826',
+            // color: '#00b3e2d1',
+            anchor: 'bottom'
           },
           user: {
             popup: {
@@ -219,7 +225,7 @@ export default {
             this.setAlert('Location found.', 'success')
             this.$refs.mapElement.map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], essential: true })
             setTimeout(() => {
-              this.setAlert('Adding vehicles to map...')
+              this.setAlert('Reticulating splines...')
             }, 800)
           }
         })
@@ -317,7 +323,7 @@ export default {
     flyToUserLocation () {
       this.$refs.mapElement.map.flyTo({ center: this.location, essential: true, zoom: 16 })
       setTimeout(() => {
-        this.setAlert('Adding vehicles to map...')
+        this.setAlert('Reticulating splines...')
       }, 800)
     }
   }
