@@ -61,7 +61,7 @@
       <UserAlert v-bind="alert" @dismiss="clearAlert" />
     </aside>
     <aside>
-      <UserAlert v-bind="error" :class="alert.active ? 'mt-3' : ''" @dismiss="clearError" />
+      <UserAlert v-bind="error" :class="alert.active ? 'mt-14' : ''" @dismiss="clearError" />
     </aside>
   </div>
 </template>
@@ -153,7 +153,7 @@ export default {
     }
   },
   computed: {
-    ...mapState(['models', 'options', 'parking', 'homezones', 'cities', 'vehicles']),
+    ...mapState(['models', 'options', 'parking', 'homezones', 'cities', 'vehicles', 'bearing']),
     // @returns {boolean}
     locationReady () {
       return !this.$geolocation.loading && this.$geolocation.supported && this.$geolocation.coords !== null
@@ -180,13 +180,16 @@ export default {
         output = this.vehicles.filter(car => this.inBounds(car, this.mapState.bounds))
       }
       return output
+    },
+    map () {
+      return this.$refs?.mapElement?.map
     }
   },
   created () {
     this.mapbox = Mapbox
   },
   methods: {
-    ...mapActions(['initStore', 'updateAnonApiData']),
+    ...mapActions(['initStore', 'updateAnonApiData', 'setBearing']),
     /**
      * @param {AvailableVehicle} availableVehicle
      * @returns {[number,number]} - in [lon,lat] format
@@ -223,9 +226,13 @@ export default {
         .then((pos) => {
           if (pos && pos.coords) {
             this.setAlert('Location found.', 'success')
-            this.$refs.mapElement.map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], essential: true })
+            this.map.easeTo({ center: [pos.coords.longitude, pos.coords.latitude], essential: true })
             setTimeout(() => {
               this.setAlert('Reticulating splines...')
+              // a weak substitute for setBounds(), in case no vehicles are visible on load
+              if (this.filteredVehicles.length === 0) {
+                this.map.zoomOut()
+              }
             }, 800)
           }
         })
@@ -238,15 +245,30 @@ export default {
     syncMapBounds () {
       // Sync visible bounds from map obj to a reactive vue data prop
       // Updating the bounds causes the filteredVehicles computed prop to recalculate which markers should be drawn
-      this.mapState.bounds = this.$refs.mapElement.map.getBounds()
+      this.mapState.bounds = this.map.getBounds()
       // Set lastMove time for debouncing purposes.
       // We don't want to have to recalculate the visible vehicles more than necessary.
       this.mapState.lastMove = Date.now()
+    },
+    noop () { /** noop */ },
+    /**
+     * Conditionally set bearing in a branchless style
+     * @param {number} bearing - New bearing
+     */
+    conditionallyUpdateBearing (bearing) {
+      // const options = [this.setBearing, this.noop]
+      // const valueIsUnchanged = (bearing === this.bearing)
+      // // set bearing or do nothing
+      // options[Number(valueIsUnchanged)](bearing);
+      [this.setBearing, this.noop][Number(bearing === this.bearing)](bearing)
     },
     onMapMove (event) {
       // We don't want to recalculate the visible markers until the map has stopped moving.
       // This event fires A LOT so we don't want to be wasting cycles recalculating what is visible until moving is done.
       if (!event.map._moving) {
+        // we need the bearing for the compass icon
+        this.conditionallyUpdateBearing(event.map.getBearing())
+
         // We can't count on receiving this event with map.moving === false at the end of a move
         // We might get just this, we might get 'moveend', we might get both. For this reason we need to
         // set the bounds in both, but with debouncing in the latter to ensure we aren't doing it too often.
@@ -255,11 +277,13 @@ export default {
         this.syncMapBounds()
       }
     },
-    onMapMoveEnd (_event) {
+    onMapMoveEnd (event) {
       const debounce = Date.now() - this.mapState.lastMove
       // debounce time chosen by trial-and-error. If we updated bounds in the last 150ms, we should be good.
       // The 'inBounds' function extends the bounds to provide a margin for error.
       if (debounce > 150) {
+        this.conditionallyUpdateBearing(event.map.getBearing())
+
         // Update the bounds only if they haven't been updated in the last 150 ms.
         // This exists to ensure that all the correct markers have been added.
         // The "moveend" event only fires when the map is manually moved by the user. Calls to map.flyTo() do not trigger it.
@@ -321,7 +345,7 @@ export default {
       })
     },
     flyToUserLocation () {
-      this.$refs.mapElement.map.flyTo({ center: this.location, essential: true, zoom: 16 })
+      this.map.easeTo({ center: this.location, essential: true, zoom: 16 })
       setTimeout(() => {
         this.setAlert('Reticulating splines...')
       }, 800)
