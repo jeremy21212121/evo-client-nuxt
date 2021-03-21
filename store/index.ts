@@ -48,7 +48,8 @@ export const state = () => ({
     hasError: false
   } as ErrorStatus,
   // latLon: [] as number[],
-  position: { lat: 49.25776294746344, lon: -123.0680493304739 } as AnonApi.Position
+  position: { lat: 49.25776294746344, lon: -123.0680493304739 } as AnonApi.Position,
+  bearing: 0
 })
 
 export type RootState = ReturnType<typeof state>
@@ -76,7 +77,8 @@ export const mutations: MutationTree<RootState> = {
     state.vehicles.forEach(vehicle => addDistanceToVehicle(vehicle, newPosition))
     // sort array in-place
     sortVehiclesByDistance(state.vehicles)
-  }
+  },
+  SET_BEARING: (state, newBearing: number) => (state.bearing = newBearing)
 }
 
 export const actions: ActionTree<RootState, RootState> = {
@@ -116,5 +118,8 @@ export const actions: ActionTree<RootState, RootState> = {
   setPosition (context: ActionContext<RootState, RootState>, position: AnonApi.Position) {
     context.commit('SET_POSITION', position)
     context.commit('SORT_VEHICLES', [position.lat, position.lon])
+  },
+  setBearing (context: ActionContext<RootState, RootState>, bearing: number) {
+    context.commit('SET_BEARING', bearing)
   }
 }
