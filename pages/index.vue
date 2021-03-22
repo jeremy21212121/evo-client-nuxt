@@ -180,6 +180,10 @@ export default {
         output = this.vehicles.filter(car => this.inBounds(car, this.mapState.bounds))
       }
       return output
+    },
+    // a convenient reference to our map object
+    map () {
+      return this.$refs?.mapElement?.map
     }
   },
   created () {
@@ -223,7 +227,7 @@ export default {
         .then((pos) => {
           if (pos && pos.coords) {
             this.setAlert('Location found.', 'success')
-            this.$refs.mapElement.map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], essential: true })
+            this.map.easeTo({ center: [pos.coords.longitude, pos.coords.latitude], essential: true })
             setTimeout(() => {
               this.setAlert('Reticulating splines...')
             }, 800)
@@ -238,7 +242,7 @@ export default {
     syncMapBounds () {
       // Sync visible bounds from map obj to a reactive vue data prop
       // Updating the bounds causes the filteredVehicles computed prop to recalculate which markers should be drawn
-      this.mapState.bounds = this.$refs.mapElement.map.getBounds()
+      this.mapState.bounds = this.map.getBounds()
       // Set lastMove time for debouncing purposes.
       // We don't want to have to recalculate the visible vehicles more than necessary.
       this.mapState.lastMove = Date.now()
@@ -321,7 +325,7 @@ export default {
       })
     },
     flyToUserLocation () {
-      this.$refs.mapElement.map.flyTo({ center: this.location, essential: true, zoom: 16 })
+      this.map.easeTo({ center: this.location, essential: true, zoom: 16 })
       setTimeout(() => {
         this.setAlert('Reticulating splines...')
       }, 800)
