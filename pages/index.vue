@@ -183,7 +183,7 @@ export default {
     },
     // a convenient reference to our map object
     map () {
-      return this.$refs?.mapElement?.map
+      return this.mapbox && this.mapbox.map
     }
   },
   created () {
@@ -230,6 +230,7 @@ export default {
             this.map.easeTo({ center: [pos.coords.longitude, pos.coords.latitude], essential: true })
             setTimeout(() => {
               this.setAlert('Reticulating splines...')
+              this.maybeZoomOut()
             }, 800)
           }
         })
@@ -242,10 +243,12 @@ export default {
     syncMapBounds () {
       // Sync visible bounds from map obj to a reactive vue data prop
       // Updating the bounds causes the filteredVehicles computed prop to recalculate which markers should be drawn
-      this.mapState.bounds = this.map.getBounds()
-      // Set lastMove time for debouncing purposes.
-      // We don't want to have to recalculate the visible vehicles more than necessary.
-      this.mapState.lastMove = Date.now()
+      if (this.mapbox && this.mapbox.map) {
+        this.mapState.bounds = this.mapbox.map.getBounds()
+        // Set lastMove time for debouncing purposes.
+        // We don't want to have to recalculate the visible vehicles more than necessary.
+        this.mapState.lastMove = Date.now()
+      }
     },
     onMapMove (event) {
       // We don't want to recalculate the visible markers until the map has stopped moving.
@@ -328,7 +331,14 @@ export default {
       this.map.easeTo({ center: this.location, essential: true, zoom: 16 })
       setTimeout(() => {
         this.setAlert('Reticulating splines...')
+        this.maybeZoomOut()
       }, 800)
+    },
+    maybeZoomOut () {
+      // silly hack to handle no visible cars. By zooming out one notch, hopefully the user can now see some cars
+      if (this.filteredVehicles.length === 0) {
+        this.map.zoomOut()
+      }
     }
   }
 }
